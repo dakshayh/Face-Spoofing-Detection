@@ -1,168 +1,112 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+import os
 
-#to compare after
-from skimage import feature
+def get_pixel(img, center, x, y):
+    new_value = 0
+    try:
+        if img[x][y] >= center:
+            new_value = 1
+    except:
+        pass
+    return new_value
 
-class LBP:
-	def __init__(self, input):
-		 # Read the image and convert to grayscale
-		self.image = cv2.imread(input, 0)
 
-		# a copy of the image to transform
-		self.transformed_img = cv2.imread(input, 0)
+def lbp_calculated_pixel(img, x, y):
+    '''
+     64 | 128 |   1
+    ----------------
+     32 |   0 |   2
+    ----------------
+     16 |   8 |   4    
+    '''    
+    center = img[x][y]
+    val_ar = []
+    val_ar.append(get_pixel(img, center, x-1, y+1))     # top_right
+    val_ar.append(get_pixel(img, center, x, y+1))       # right
+    val_ar.append(get_pixel(img, center, x+1, y+1))     # bottom_right
+    val_ar.append(get_pixel(img, center, x+1, y))       # bottom
+    val_ar.append(get_pixel(img, center, x+1, y-1))     # bottom_left
+    val_ar.append(get_pixel(img, center, x, y-1))       # left
+    val_ar.append(get_pixel(img, center, x-1, y-1))     # top_left
+    val_ar.append(get_pixel(img, center, x-1, y))       # top
+    
+    power_val = [1, 2, 4, 8, 16, 32, 64, 128]
+    val = 0
+    for i in range(len(val_ar)):
+        val += val_ar[i] * power_val[i]
+    return val    
 
-		# get size informations		
-		self.height = len(self.image)
-		self.width = len(self.image[0])			
 
-	def execute(self):				
-		#Run a example of LBP
-		#self.example()
+def show_output(output_list):
+    output_list_len = len(output_list)
+    figure = plt.figure()
+    for i in range(output_list_len):
+        current_dict = output_list[i]
+        current_img = current_dict["img"]
+        current_xlabel = current_dict["xlabel"]
+        current_ylabel = current_dict["ylabel"]
+        current_xtick = current_dict["xtick"]
+        current_ytick = current_dict["ytick"]
+        current_title = current_dict["title"]
+        current_type = current_dict["type"]
+        current_plot = figure.add_subplot(1, output_list_len, i+1)
+        if current_type == "gray":
+            current_plot.imshow(current_img, cmap = plt.get_cmap('gray'))
+            current_plot.set_title(current_title)
+            current_plot.set_xticks(current_xtick)
+            current_plot.set_yticks(current_ytick)
+            current_plot.set_xlabel(current_xlabel)
+            current_plot.set_ylabel(current_ylabel)
+        elif current_type == "histogram":
+            current_plot.plot(current_img, color = "black")
+            current_plot.set_xlim([0,260])
+            current_plot.set_title(current_title)
+            current_plot.set_xlabel(current_xlabel)
+            current_plot.set_ylabel(current_ylabel)            
+            ytick_list = [int(i) for i in current_plot.get_yticks()]
+            current_plot.set_yticklabels(ytick_list,rotation = 90)
+    
+    plt.show()
 
-		# We create a matrix with zeros that it will be replaced with 1 or 0.
-		# We compare value of pixel[line,column] with values of its neighbours.
-		# When neighbour >= center we replace with 1, otherwise 0.	
-		# This procedure is done by _thresholded method
-		img_lbp = np.zeros((self.height, self.width, 3), np.uint8)		
-		
-		# for each pixel we will find its LBP
-		for line in range(self.height):			
-			for column in range(self.width):				
-		 		img_lbp[line, column] = self._calculateLBP(self.image, column, line)			
-				
-		self._histogram(self.image, self.transformed_img, "Result from algorithm developed")	
-		self._displayImages(self.transformed_img, "Result from algorithm developed")	
 
-	def example(self):
-		'''
-		Run a example how to calculate LBP
-		'''
-		# We have a matrix with pixels
-		pixels = np.matrix([[6,5,2],[7,6,1],[9,3,7]])
+def main():
+    imageDir = "/home/ubuntu/Desktop/Face Spoofing/data_normal/test_normal/001" #specify your path here
+    image_path_list = []
+    for file in os.listdir(imageDir):
+        image_path_list.append(os.path.join(imageDir, file))
+    out_list=[]
+    outDir = "/home/ubuntu/Desktop/Face Spoofing/dataset/test_lbp/001"	#specify the directory where the images should be stored
+    d=1
 
-		# We create a matrix with zeros that it will be replaced with 1 or 0.
-		# We compare value of pixel[1,1] (center) with values of its neighbours.
-		# When neighbour >= center we replace with 1, otherwise 0.	
-		# This procedure is done by _thresholded method
-		zero_matrix = np.zeros((3,3), np.uint8)
-					
-		# Get the values from matrixes
-		line = 1
-		column = 1
-		center        = pixels[line,column]
-			
-		positions = self._get_positions(pixels, line, column)
+#loop through image_path_list to open each image
+    for imagePath in image_path_list:
+        img_bgr = cv2.imread(imagePath)
+        
+        height, width, channel = img_bgr.shape
+        img_gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+        
+        img_lbp = np.zeros((height, width,3), np.uint8)
+        for i in range(0, height):
+            for j in range(0, width):
+                img_lbp[i, j] = lbp_calculated_pixel(img_gray, i, j)
+                hist_lbp = cv2.calcHist([img_lbp], [0], None, [256], [0, 256])
+                output_list = []
+        
+        output_list.append({
+        "img": img_lbp,
+        "xlabel": "",
+        "ylabel": "",
+        "xtick": [],
+        "ytick": [],
+        "title": "LBP Image",
+        "type": "gray"
+        })    
+        
+        
+        cv2.imwrite(os.path.join(outDir,'001_%d.jpg'%d),img_lbp) #numbering the images
+        d+=1
 
-		# We check each value and replace with 1 or 0		
-		values = self._thresholded(center, positions)
-
-		# Mask with the weights
-		'''
-	     1  | 2  | 4
-	    ----------------
-	     8  | 0  | 16
-	    ----------------
-	     32 | 64 | 128
-	    ''' 	    
-		weights = [1, 2, 4, 8, 16, 32, 64, 128]
-		
-		print("\nbit values")		
-		for i in range(0, len(values)):
-		 	print("For '{}' the bit value is '{}'".format(positions[i], values[i]))			
-
-		print("\nValues for each pixel")
-		lbp = 0
-		for i in range(0, len(values)):
-			lbp_temp = values[i]*weights[i]
-			lbp+=lbp_temp
-			print("For '{}' the LBP is '{}'".format(values[i], lbp_temp))						
-	
-		print("\nLBP={}".format(lbp))
-								
-	def _displayImages(self, transformed_img, title):		
-		plt.figure()
-		plt.axis("off")
-		plt.title(title)
-		plt.imshow(transformed_img, cmap='gray')
-		plt.show()
-		
-	def _calculateLBP(self, pixel, column, line):		
-	    # Now we want to get LBP for pixel[line,column].
-		# we compare grey level value of pixel[line,column] with values of its neighbours
-		# starting at the top-left pixel and moving clockwise
-		values = self._thresholded(pixel[line,column], self._get_positions(pixel, column, line))
-
-		# Mask with the weights
-		weights = [1, 2, 4, 8, 16, 32, 64, 128]
-
-		lbp = 0
-		for i in range(0, len(values)):
-			lbp += values[i]*weights[i]
-
-		#Transform the image with the new value
-		self.transformed_img.itemset((line,column), lbp)
-
-		return lbp
-	
-	def _get_positions(self, pixels, column, line):
-		top_left      = self._get_pixel_value(pixels,line-1, column-1)
-		top_up        = self._get_pixel_value(pixels,line-1, column)
-		top_right     = self._get_pixel_value(pixels,line-1, column+1)
-		right         = self._get_pixel_value(pixels,line, column+1)
-		left          = self._get_pixel_value(pixels,line, column-1)
-		bottom_left   = self._get_pixel_value(pixels,line+1, column-1)
-		bottom_down   = self._get_pixel_value(pixels,line+1, column)
-		bottom_right  = self._get_pixel_value(pixels,line+1, column+1)
-
-		positions = [top_left, top_up, top_right, left, right, bottom_left, bottom_down, bottom_right]
-
-		return positions
-
-	def _thresholded(self, center, neighbours):
-		#we compare grey level value of pixel[x,y] (center) with values of its neighbours
-	    result = []
-	    for neighbour in neighbours:
-	        if neighbour >= center:
-	            result.append(1)
-	        else:
-	            result.append(0)
-	    return result
-
-	def _get_pixel_value(self, pixel, line, column, default=0):
-		# if the index does not exist return 0 
-		# Workaround to create a 'border'
-		try:
-			return pixel[line,column]
-		except IndexError:					
-			return default
-
-	def _histogram(self, img, transformed_img, title):					
-		hist,bins = np.histogram(img.flatten(),256,[0,256])
-
-		#cumsum -> Return the cumulative sum of the elements along a given axis.
-		#CDF: cumulative distribution function
-		cdf = hist.cumsum()		
-		cdf_normalized = cdf * hist.max()/ cdf.max()
-
-		plt.plot(cdf_normalized, color = 'b')
-		plt.hist(transformed_img.flatten(),256,[0,256], color = 'r')
-		plt.xlim([0,256])
-		plt.title(title)
-		plt.legend(('Cumulative Distribution Function (CDF)','Histogram'), loc = 'upper left')
-		plt.show()
-
-		cv2.waitKey(0)
-		cv2.destroyAllWindows()
-
-	def compare(self):
-		# compute the Local Binary Pattern representation
-		# of the image, and then use the LBP representation
-		# to build the histogram of patterns
-		numPoints = 8
-		radius = 1
-		lbp = feature.local_binary_pattern(self.image, numPoints, radius, method="default")		
-
-		self._histogram(self.image, lbp, "Result from scikit-image")
-self._displayImages(lbp, "Result from scikit-image")
+if __name__ == '__main__':
+        main()
