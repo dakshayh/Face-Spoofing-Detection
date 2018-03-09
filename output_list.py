@@ -1,4 +1,7 @@
 def show_output(output_list):
+    '''
+    For showing the histogram and lbp image
+    '''
     output_list_len = len(output_list)
     figure = plt.figure()
     for i in range(output_list_len):
