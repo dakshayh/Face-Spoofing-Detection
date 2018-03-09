@@ -2,13 +2,7 @@ import os
 import get_pixel
 
 def lbp_calculate(img, x, y):
-    '''
-     64 | 128 |   1
-    ----------------
-     32 |   0 |   2
-    ----------------
-     16 |   8 |   4    
-    '''    
+   
     center = img[x][y]
     val_ar = []
     val_ar.append(get_pixel(img, center, x-1, y+1))     # top_right
