@@ -28,7 +28,8 @@ def main():
                 img_lbp[i, j] = lbp_calculated_pixel(img_gray, i, j)
                 hist_lbp = cv2.calcHist([img_lbp], [0], None, [256], [0, 256])
                 output_list = []
-        
+        '''
+        For printing the LBP and hist images from show_output function
         output_list.append({
         "img": img_lbp,
         "xlabel": "",
@@ -38,7 +39,7 @@ def main():
         "title": "LBP Image",
         "type": "gray"
         })    
-        
+        '''
         
         cv2.imwrite(os.path.join(outDir,'001_%d.jpg'%d),img_lbp) #numbering the images
         d+=1
